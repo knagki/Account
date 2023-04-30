@@ -1,6 +1,70 @@
 # Account
-## 04-08 미완성 은행 시스템
+## 04-30 결재 이체 종류 설정 트리거 정비
+```oracle
+create table customer(
+customer_num number(4) primary key,
+name varchar2(10),
+id varchar(20),
+pw varchar(20),
+phone varchar2(11),
+reg_num varchar2(13),
+email varchar2(25),
+job varchar(10)
+);
 
+create sequence customer_seq start with 1 increment by 1;
+
+create table account(
+account_num varchar2(14) primary key,
+balance number(20),
+customer_num number(4),
+constraint account_customer_no foreign key (customer_num) references customer(customer_num)
+);
+
+CREATE TABLE transaction (
+  transaction_num NUMBER(4) PRIMARY KEY,
+  sender_account VARCHAR2(14),
+  receiver_account VARCHAR2(14),
+  amount NUMBER(10),
+  send_context VARCHAR2(100),
+  transaction_date TIMESTAMP, -- changed data type to timestamp
+  transaction_type VARCHAR2(3), -- added new column to indicate transaction type
+  CONSTRAINT fk_sender_account FOREIGN KEY (sender_account) REFERENCES account(account_num),
+  CONSTRAINT fk_receiver_account FOREIGN KEY (receiver_account) REFERENCES account(account_num)
+);
+
+create sequence transaction_seq start with 1 increment by 1;
+
+CREATE OR REPLACE TRIGGER transaction_trigger
+AFTER INSERT ON transaction
+FOR EACH ROW
+DECLARE
+  sender_balance number(20);
+  receiver_balance number(20);
+BEGIN
+  IF :NEW.transaction_type = 'in' THEN -- 입금 처리
+    -- Get receiver's current balance
+    SELECT balance INTO receiver_balance FROM account WHERE account_num = :NEW.receiver_account;
+    -- Update receiver's balance
+    UPDATE account SET balance = receiver_balance + :NEW.amount WHERE account_num = :NEW.receiver_account;
+  ELSIF :NEW.transaction_type = 'out' THEN -- 출금 처리
+    -- Get sender's current balance
+    SELECT balance INTO sender_balance FROM account WHERE account_num = :NEW.sender_account;
+    -- Update sender's balance
+    UPDATE account SET balance = sender_balance - :NEW.amount WHERE account_num = :NEW.sender_account;
+  END IF;
+END;
+/
+
+create table inquiry(
+inquiry_num number(4) primary key,
+customer_num number(4),
+inquiry_date date,
+inquiry_content varchar2(1000),
+constraint inquiry_customer_num foreign key (customer_num) references customer(customer_num)
+);
+```
+## 04-08 미완성 은행 시스템
 ```java
 package ch00;
 
